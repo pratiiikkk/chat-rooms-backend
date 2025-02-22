@@ -1,11 +1,11 @@
 
 import { WebSocket, WebSocketServer } from 'ws';
 import { randomBytes } from 'crypto';
-
 interface Room {
   id: string;
   clients: Map<string, WebSocketClient>;
   createdAt: number;
+  userCount: number;  
 }
 
 interface WebSocketClient {
@@ -54,7 +54,9 @@ class ChatServer {
 
     this.clients.set(socket, client);
     console.log(`Client connected: ${client.userId}`);
-
+    this.sendToClient(client,{
+      type:"connected_to_ws",
+      userId:client.userId})
     socket.on('message', (data: string) => this.handleMessage(client, data));
     socket.on('close', () => this.handleDisconnection(client));
     socket.on('error', (error) => this.handleError(client, error));
@@ -85,14 +87,15 @@ class ChatServer {
     }
   }
 
-  private handleCreateRoom(client: WebSocketClient): void {
+   private handleCreateRoom(client: WebSocketClient): void {
     const roomId = this.generateRoomId();
     const room: Room = {
       id: roomId,
       clients: new Map(),
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      userCount: 0  // Initialize user count
     };
-
+  
     this.rooms.set(roomId, room);
     this.sendToClient(client, {
       type: 'room_created',
@@ -102,38 +105,40 @@ class ChatServer {
     console.log(`Room created: ${roomId}`);
   }
 
-  private handleJoinRoom(client: WebSocketClient, message: Message): void {
+   private handleJoinRoom(client: WebSocketClient, message: Message): void {
     const room = this.rooms.get(message.roomId!);
     
     if (!room) {
       this.sendError(client, 'Room not found');
       return;
     }
-
+  
     if (client.roomId) {
       this.leaveRoom(client);
     }
-
+  
     client.name = message.name!;
     client.roomId = room.id;
     room.clients.set(client.userId, client);
-
+    room.userCount++;  // Increment user count
+  
     this.sendToClient(client, {
       type: 'room_joined',
       roomId: room.id,
-      name: client.name
+      name: client.name,
+      userCount: room.userCount  // Add user count to response
     });
-
+  
     // Notify other clients in the room
     this.broadcastToRoom(room, {
       type: 'user_joined',
       userId: client.userId,
-      name: client.name
+      name: client.name,
+      userCount: room.userCount  // Add user count to broadcast
     }, client.userId);
-
-    console.log(`Client ${client.userId} joined room: ${room.id}`);
+  
+    console.log(`Client ${client.userId} joined room: ${room.id} (Users: ${room.userCount})`);
   }
-
   private handleSendMessage(client: WebSocketClient, message: Message): void {
     if (!client.roomId) {
       this.sendError(client, 'Not in a room');
@@ -169,18 +174,20 @@ class ChatServer {
     this.handleDisconnection(client);
   }
 
-  private leaveRoom(client: WebSocketClient): void {
+    private leaveRoom(client: WebSocketClient): void {
     const room = this.rooms.get(client.roomId!);
     if (room) {
       room.clients.delete(client.userId);
+      room.userCount--;  // Decrement user count
       
       // Notify other clients about the leave
       this.broadcastToRoom(room, {
         type: 'user_left',
         userId: client.userId,
-        name: client.name
+        name: client.name,
+        userCount: room.userCount  // Add user count to broadcast
       });
-
+  
       if (room.clients.size === 0) {
         this.rooms.delete(room.id);
         console.log(`Room deleted: ${room.id}`);
