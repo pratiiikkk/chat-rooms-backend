@@ -1,20 +1,33 @@
 {
-  "name": "chat-app",
+  "name": "chat-app-backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "WebSocket-based chat server with modular architecture",
+  "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsc -b && node ./dist/index.js"
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx --watch src/index.ts",
+    "dev:build": "tsc -b && node ./dist/index.js",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "websocket",
+    "chat",
+    "realtime",
+    "nodejs",
+    "typescript"
+  ],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
-    "@types/ws": "^8.5.14",
-    "lucide-react": "^0.475.0",
-    "typescript": "^5.7.3",
-    "uuid": "^11.1.0",
     "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/ws": "^8.5.14",
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.3"
   }
 }
